@@ -22,8 +22,8 @@ Delete an existing task.
 ## `timelog start <mnemonic> [date/time] [flags]`
 Register the time the user started working on a task.
 
-## `timelog stop [date/time] [flags]`
-Register the time the user stopped working on the current task.
+## `timelog stop [mnemonic] [date/time] [flags]`
+Register the time the user stopped working on a task. If the task is not provided, the current task will be considered stopped.
 
 ## `timelog commit <mnemonic> [date/time]`
 Indicate that all the time worked on a task until the given date/time was logged into an external tool.
@@ -36,19 +36,21 @@ Prompt the user to provide an estimated time for all pending entries of a task. 
 
 See `--forgot (-f)`.
 
-## `timelog goal <type>=<time span> [mnemonic]`
-Set a time goal. If a mnemonic is provided, the goal is valid for the corresponding task. If not, the goal is valid for the work time in general.
+## `timelog goal --period=<period> <--time=<time>|--erase> [mnemonic]`
+Set a time goal. If a mnemonic is provided, the goal is valid for the corresponding task. If not, the goal is valid for the work time in general. A goal can also be removed by using the flag `--erase (-e)`.
 
-`<type>`:
+`<period>`:
 * `month`
 * `week`
 * `day` (overrides all days of the week)
 * `sunday`, `monday`, `tuesday`, `wednesday`, `thursday`, `friday`, `saturday` (overrides that day)
 
+`<time>`: Time span as described in `Constraints`.
+
 ## `timelog goals [mnemonic]`
 Display all the goals for a task, or for the work in general if a mnemonic is not provided.
 
-## `timelog status`
+## `timelog status [mnemonic]`
 Display current status:
 
 * Not working

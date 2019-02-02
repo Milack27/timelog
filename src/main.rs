@@ -1,5 +1,11 @@
-#[macro_use]
-extern crate clap;
+use clap::clap_app;
+use clap::crate_authors;
+use clap::crate_description;
+use clap::crate_version;
+
+use timelog::CommandInput;
+use timelog::ForgetableDateTimeInput;
+use timelog::GoalArgInput;
 
 fn main() {
     const MNEMONIC_DESCRIPTION: &str = "Primary reference to the task";
@@ -44,6 +50,7 @@ fn main() {
         )
         (@subcommand stop =>
             (about: "Registers the time the user stopped working on the current task")
+            (@arg mnemonic: MNEMONIC_DESCRIPTION)
             (@arg datetime: "Date/time the user stopped working")
             (@arg forgot: --forgot -f FORGOT_DESCRIPTION)
         )
@@ -78,4 +85,58 @@ fn main() {
             (@arg mnemonic: MNEMONIC_DESCRIPTION)
         )
     ).get_matches();
+
+    const REQUIRED_FIELD_EXPECTED: &str = "Required field not found!";
+
+    let command_input = match matches.subcommand() {
+        ("enter", Some(submatches)) => CommandInput::Enter {
+            datetime: ForgetableDateTimeInput::from(submatches),
+        },
+        ("exit", Some(submatches)) => CommandInput::Exit {
+            datetime: ForgetableDateTimeInput::from(submatches),
+        },
+        ("create", Some(submatches)) => CommandInput::Create {
+            mnemonic: submatches.value_of("mnemonic").expect(REQUIRED_FIELD_EXPECTED),
+            code: submatches.value_of("code"),
+        },
+        ("edit", Some(submatches)) => CommandInput::Edit {
+            mnemonic: submatches.value_of("mnemonic").expect(REQUIRED_FIELD_EXPECTED),
+            code: submatches.value_of("code"),
+        },
+        ("delete", Some(submatches)) => CommandInput::Delete {
+            mnemonic: submatches.value_of("mnemonic").expect(REQUIRED_FIELD_EXPECTED),
+        },
+        ("start", Some(submatches)) => CommandInput::Start {
+            mnemonic: submatches.value_of("mnemonic").expect(REQUIRED_FIELD_EXPECTED),
+            datetime: ForgetableDateTimeInput::from(submatches),
+        },
+        ("stop", Some(submatches)) => CommandInput::Stop {
+            mnemonic: submatches.value_of("mnemonic"),
+            datetime: ForgetableDateTimeInput::from(submatches),
+        },
+        ("commit", Some(submatches)) => CommandInput::Commit {
+            mnemonic: submatches.value_of("mnemonic").expect(REQUIRED_FIELD_EXPECTED),
+            datetime: submatches.value_of("datetime"),
+        },
+        ("open", Some(submatches)) => CommandInput::Open {
+            mnemonic: submatches.value_of("mnemonic"),
+        },
+        ("resolve", Some(submatches)) => CommandInput::Resolve {
+            mnemonic: submatches.value_of("mnemonic"),
+        },
+        ("goal", Some(submatches)) => CommandInput::Goal {
+            period: submatches.value_of("period").expect(REQUIRED_FIELD_EXPECTED),
+            goal_arg: GoalArgInput::from(submatches),
+            mnemonic: submatches.value_of("mnemonic"),
+        },
+        ("goals", Some(submatches)) => CommandInput::Goals {
+            mnemonic: submatches.value_of("mnemonic"),
+        },
+        ("status", Some(submatches)) => CommandInput::Status {
+            mnemonic: submatches.value_of("mnemonic"),
+        },
+        _ => return,
+    };
+
+    command_input.execute();
 }
