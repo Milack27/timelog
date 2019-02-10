@@ -1,8 +1,15 @@
+#![feature(try_from)]
+
+use ansi_term::enable_ansi_support;
+
 use clap::clap_app;
 use clap::crate_authors;
 use clap::crate_description;
 use clap::crate_version;
 
+use std::convert::TryFrom;
+
+use timelog::Command;
 use timelog::CommandInput;
 use timelog::ForgetableDateTimeInput;
 use timelog::GoalArgInput;
@@ -138,5 +145,18 @@ fn main() {
         _ => return,
     };
 
-    command_input.execute();
+    #[cfg(windows)]
+    enable_ansi_support().ok();
+
+    let command = match Command::try_from(command_input) {
+        Ok(command) => command,
+        Err(error) => {
+            println!("{}", error);
+            return;
+        }
+    };
+
+    if let Err(error) = command.execute() {
+        println!("{}", error);
+    }
 }

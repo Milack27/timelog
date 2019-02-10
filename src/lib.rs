@@ -1,5 +1,7 @@
 #![feature(try_from)]
 
+use ansi_term::Color;
+
 use chrono::prelude::*;
 use chrono::Duration;
 
@@ -13,6 +15,9 @@ use regex::Regex;
 
 use std::convert::From;
 use std::convert::TryFrom;
+use std::fmt::Display;
+use std::fmt::Error as FormatError;
+use std::fmt::Formatter;
 
 type DateTime = chrono::DateTime<Local>;
 
@@ -94,14 +99,12 @@ pub enum CommandParseError {
     GoalPeriodParseError(InvalidGoalPeriod),
 }
 
-impl<'a> Command<'a> {
-    pub fn execute(&self) -> Result<(), ()> {
-        unimplemented!()
-    }
+pub enum CommandExecutionError {
+
 }
 
-impl<'a> CommandInput<'a> {
-    pub fn execute(&self) -> Result<(), ()> {
+impl<'a> Command<'a> {
+    pub fn execute(&self) -> Result<(), CommandExecutionError> {
         unimplemented!()
     }
 }
@@ -202,6 +205,51 @@ impl From<DurationParseError> for CommandParseError {
 impl From<InvalidGoalPeriod> for CommandParseError {
     fn from(error: InvalidGoalPeriod) -> CommandParseError {
         CommandParseError::GoalPeriodParseError(error)
+    }
+}
+
+impl Display for CommandParseError {
+    fn fmt(&self, f: &mut Formatter) -> std::result::Result<(), FormatError> {
+        write!(f, "{}: ", Color::Red.paint("error").to_string())?;
+
+        match self {
+            CommandParseError::DateTimeParseError(error) => {
+                writeln!(f, "could not parse the date/time argument.")?;
+                write!(f, "cause: {}", error)
+            }
+            CommandParseError::DurationParseError(error) => {
+                writeln!(f, "could not parse the duration argument.")?;
+                write!(f, "cause: {}", error)
+            }
+            CommandParseError::GoalPeriodParseError(error) => {
+                writeln!(f, "could not parse the period argument.")?;
+                write!(f, "cause: {}", error)
+            }
+        }
+    }
+}
+
+impl Display for DurationParseError {
+    fn fmt(&self, f: &mut Formatter) -> std::result::Result<(), FormatError> {
+        write!(f, "{}", match self {
+            DurationParseError::InvalidFormat => "invalid duration format",
+            DurationParseError::InvalidHourNumber => "invalid hour number",
+            DurationParseError::InvalidMinuteNumber => "invalid minute number",
+            DurationParseError::EmptyDuration => "empty duration",
+        })
+    }
+}
+
+impl Display for InvalidGoalPeriod {
+    fn fmt(&self, f: &mut Formatter) -> std::result::Result<(), FormatError> {
+        writeln!(f, "invalid goal period")?;
+        write!(f, "valid period values: month, week, day, sunday, monday, tuesday, wednesday, thursday, friday, saturday.")
+    }
+}
+
+impl Display for CommandExecutionError {
+    fn fmt(&self, f: &mut Formatter) -> std::result::Result<(), FormatError> {
+        unimplemented!()
     }
 }
 
