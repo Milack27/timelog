@@ -1,5 +1,7 @@
 #![feature(try_from)]
 
+pub mod log;
+
 use ansi_term::Color;
 
 use chrono::prelude::*;
@@ -40,7 +42,7 @@ pub enum Command<'a> {
 
 /// Represent a command in the same format as invoked by the user, with possibly missing parameters.
 /// For example, if a command requires a date/time parameter and the user doesn't provide it, the current date/time is used.
-/// All the missing parameters can be resolved by converting the `CommandIput` into a `Command` object.
+/// All the missing parameters can be resolved by converting the `CommandInput` into a `Command` object.
 pub enum CommandInput<'a> {
     Enter { datetime: ForgetableDateTimeInput<'a> },
     Exit { datetime: ForgetableDateTimeInput<'a> },
@@ -59,12 +61,12 @@ pub enum CommandInput<'a> {
 
 pub struct ForgetableDateTime {
     datetime: DateTime,
-    forgot: bool,
+    forgotten: bool,
 }
 
 pub struct ForgetableDateTimeInput<'a> {
     datetime: Option<&'a str>,
-    forgot: bool,
+    forgotten: bool,
 }
 
 pub enum GoalPeriod {
@@ -105,7 +107,12 @@ pub enum CommandExecutionError {
 
 impl<'a> Command<'a> {
     pub fn execute(&self) -> Result<(), CommandExecutionError> {
-        unimplemented!()
+        match self {
+            Command::Enter { datetime } => println!("{} -- {}", datetime.datetime.format("%Y-%m-%d %H:%M"), datetime.datetime.format("%Y-%m-%d %H:%M")),
+            _ => (),
+        }
+
+        Ok(())
     }
 }
 
@@ -154,7 +161,7 @@ impl<'a> TryFrom<ForgetableDateTimeInput<'a>> for ForgetableDateTime {
     fn try_from(input: ForgetableDateTimeInput<'a>) -> Result<ForgetableDateTime, Self::Error> {
         Ok(ForgetableDateTime {
             datetime: parse_datetime_or_now(input.datetime)?,
-            forgot: input.forgot,
+            forgotten: input.forgotten,
         })
     }
 }
@@ -257,7 +264,7 @@ impl<'a> From<&'a ArgMatches<'a>> for ForgetableDateTimeInput<'a> {
     fn from(matches: &'a ArgMatches<'a>) -> ForgetableDateTimeInput<'a> {
         ForgetableDateTimeInput {
             datetime: matches.value_of("datetime"),
-            forgot: matches.is_present("forgot"),
+            forgotten: matches.is_present("forgot"),
         }
     }
 }

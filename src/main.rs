@@ -1,5 +1,6 @@
 #![feature(try_from)]
 
+#[cfg(windows)]
 use ansi_term::enable_ansi_support;
 
 use clap::clap_app;
