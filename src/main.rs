@@ -12,10 +12,10 @@ use clap::crate_version;
 use std::convert::TryFrom;
 
 use timelog::Command;
-use timelog::CommandInput;
-use timelog::ForgetableDateTimeInput;
-use timelog::GoalActionInput;
-use timelog::GoalArgInput;
+use timelog::input::CommandInput;
+use timelog::input::ForgetableDateTimeInput;
+use timelog::input::GoalActionInput;
+use timelog::input::GoalArgInput;
 
 fn main() {
     const MNEMONIC_DESCRIPTION: &str = "Primary reference to the task";
