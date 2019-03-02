@@ -5,8 +5,6 @@ use ansi_term::Color;
 use chrono::prelude::*;
 use chrono::Duration;
 
-use clap::ArgMatches;
-
 use core::str::FromStr;
 
 use lazy_static::lazy_static;
@@ -18,6 +16,12 @@ use std::convert::TryFrom;
 use std::fmt::Display;
 use std::fmt::Error as FormatError;
 use std::fmt::Formatter;
+
+//==============================================================================
+//
+//                              Type Definitions
+//
+//==============================================================================
 
 type DateTime = chrono::DateTime<Local>;
 
@@ -31,16 +35,15 @@ pub enum Command<'a> {
     Start { mnemonic: &'a str, datetime: ForgetableDateTime },
     Stop { mnemonic: Option<&'a str>, datetime: ForgetableDateTime, commit: bool },
     Commit { mnemonic: &'a str, datetime: DateTime },
-    Open { mnemonic: Option<&'a str> },
     Resolve { mnemonic: Option<&'a str> },
-    Goal { period: GoalPeriod, goal_arg: GoalArg, mnemonic: Option<&'a str> },
+    Goal { action: GoalAction, mnemonic: Option<&'a str> },
     Goals { mnemonic: Option<&'a str> },
     Status { mnemonic: Option<&'a str> },
 }
 
 /// Represent a command in the same format as invoked by the user, with possibly missing parameters.
 /// For example, if a command requires a date/time parameter and the user doesn't provide it, the current date/time is used.
-/// All the missing parameters can be resolved by converting the `CommandIput` into a `Command` object.
+/// All the missing parameters can be resolved by converting the `CommandInput` into a `Command` object.
 pub enum CommandInput<'a> {
     Enter { datetime: ForgetableDateTimeInput<'a> },
     Exit { datetime: ForgetableDateTimeInput<'a> },
@@ -50,21 +53,20 @@ pub enum CommandInput<'a> {
     Start { mnemonic: &'a str, datetime: ForgetableDateTimeInput<'a> },
     Stop { mnemonic: Option<&'a str>, datetime: ForgetableDateTimeInput<'a>, commit: bool },
     Commit { mnemonic: &'a str, datetime: Option<&'a str> },
-    Open { mnemonic: Option<&'a str> },
     Resolve { mnemonic: Option<&'a str> },
-    Goal { period: &'a str, goal_arg: GoalArgInput<'a>, mnemonic: Option<&'a str> },
+    Goal { action: GoalActionInput<'a>, arg: Option<GoalArgInput<'a>>, mnemonic: Option<&'a str> },
     Goals { mnemonic: Option<&'a str> },
     Status { mnemonic: Option<&'a str> },
 }
 
 pub struct ForgetableDateTime {
-    datetime: DateTime,
-    forgotten: bool,
+    pub datetime: DateTime,
+    pub forgotten: bool,
 }
 
 pub struct ForgetableDateTimeInput<'a> {
-    datetime: Option<&'a str>,
-    forgotten: bool,
+    pub datetime: Option<&'a str>,
+    pub forgotten: bool,
 }
 
 pub enum GoalPeriod {
@@ -74,13 +76,19 @@ pub enum GoalPeriod {
     Weekday(Weekday),
 }
 
-pub enum GoalArg {
-    Set(Duration),
-    Erase,
+pub enum GoalAction {
+    Set(GoalPeriod, Duration),
+    Erase(GoalPeriod),
+    EraseAll,
+}
+
+pub enum GoalActionInput<'a> {
+    Set(&'a str),
+    EraseAll,
 }
 
 pub enum GoalArgInput<'a> {
-    Set(&'a str),
+    Time(&'a str),
     Erase,
 }
 
@@ -93,21 +101,25 @@ pub enum DurationParseError {
 
 pub struct InvalidGoalPeriod;
 
+pub enum GoalActionParseError {
+    UnexpectedArg,
+    MissingArg,
+    InvalidGoalPeriod(InvalidGoalPeriod),
+    DurationParseError(DurationParseError),
+}
+
 pub enum CommandParseError {
     DateTimeParseError(chrono::format::ParseError),
     DurationParseError(DurationParseError),
-    GoalPeriodParseError(InvalidGoalPeriod),
+    InvalidGoalPeriod(InvalidGoalPeriod),
+    GoalActionParseError(GoalActionParseError),
 }
 
-pub enum CommandExecutionError {
-
-}
-
-impl<'a> Command<'a> {
-    pub fn execute(&self) -> Result<(), CommandExecutionError> {
-        unimplemented!()
-    }
-}
+//==============================================================================
+//
+//                  Conversions From Input to Data Structures
+//
+//==============================================================================
 
 impl<'a> TryFrom<CommandInput<'a>> for Command<'a> {
     type Error = CommandParseError;
@@ -136,11 +148,9 @@ impl<'a> TryFrom<CommandInput<'a>> for Command<'a> {
                 mnemonic,
                 datetime: parse_datetime_or_now(datetime)?,
             },
-            CommandInput::Open { mnemonic } => Command::Open { mnemonic },
             CommandInput::Resolve { mnemonic } => Command::Resolve { mnemonic },
-            CommandInput::Goal { period, goal_arg, mnemonic } => Command::Goal {
-                period: GoalPeriod::from_str(period)?,
-                goal_arg: GoalArg::try_from(goal_arg)?,
+            CommandInput::Goal { action, arg, mnemonic } => Command::Goal {
+                action: parse_goal_action(action, arg)?,
                 mnemonic,
             },
             CommandInput::Goals { mnemonic } => Command::Goals { mnemonic },
@@ -156,17 +166,6 @@ impl<'a> TryFrom<ForgetableDateTimeInput<'a>> for ForgetableDateTime {
         Ok(ForgetableDateTime {
             datetime: parse_datetime_or_now(input.datetime)?,
             forgotten: input.forgotten,
-        })
-    }
-}
-
-impl<'a> TryFrom<GoalArgInput<'a>> for GoalArg {
-    type Error = DurationParseError;
-
-    fn try_from(input: GoalArgInput<'a>) -> Result<GoalArg, Self::Error> {
-        Ok(match input {
-            GoalArgInput::Set(duration) => GoalArg::Set(parse_duration(duration)?),
-            GoalArgInput::Erase => GoalArg::Erase,
         })
     }
 }
@@ -191,6 +190,24 @@ impl FromStr for GoalPeriod {
     }
 }
 
+//==============================================================================
+//
+//                       Conversions Between Error Types
+//
+//==============================================================================
+
+impl From<InvalidGoalPeriod> for GoalActionParseError {
+    fn from(error: InvalidGoalPeriod) -> GoalActionParseError {
+        GoalActionParseError::InvalidGoalPeriod(error)
+    }
+}
+
+impl From<DurationParseError> for GoalActionParseError {
+    fn from(error: DurationParseError) -> GoalActionParseError {
+        GoalActionParseError::DurationParseError(error)
+    }
+}
+
 impl From<chrono::format::ParseError> for CommandParseError {
     fn from(error: chrono::format::ParseError) -> CommandParseError {
         CommandParseError::DateTimeParseError(error)
@@ -205,30 +222,21 @@ impl From<DurationParseError> for CommandParseError {
 
 impl From<InvalidGoalPeriod> for CommandParseError {
     fn from(error: InvalidGoalPeriod) -> CommandParseError {
-        CommandParseError::GoalPeriodParseError(error)
+        CommandParseError::InvalidGoalPeriod(error)
     }
 }
 
-impl Display for CommandParseError {
-    fn fmt(&self, f: &mut Formatter) -> std::result::Result<(), FormatError> {
-        write!(f, "{}: ", Color::Red.paint("error").to_string())?;
-
-        match self {
-            CommandParseError::DateTimeParseError(error) => {
-                writeln!(f, "could not parse the date/time argument.")?;
-                write!(f, "cause: {}", error)
-            }
-            CommandParseError::DurationParseError(error) => {
-                writeln!(f, "could not parse the duration argument.")?;
-                write!(f, "cause: {}", error)
-            }
-            CommandParseError::GoalPeriodParseError(error) => {
-                writeln!(f, "could not parse the period argument.")?;
-                write!(f, "cause: {}", error)
-            }
-        }
+impl From<GoalActionParseError> for CommandParseError {
+    fn from(error: GoalActionParseError) -> CommandParseError {
+        CommandParseError::GoalActionParseError(error)
     }
 }
+
+//==============================================================================
+//
+//                           Display Implementations
+//
+//==============================================================================
 
 impl Display for DurationParseError {
     fn fmt(&self, f: &mut Formatter) -> std::result::Result<(), FormatError> {
@@ -248,34 +256,47 @@ impl Display for InvalidGoalPeriod {
     }
 }
 
-impl Display for CommandExecutionError {
+impl Display for GoalActionParseError {
     fn fmt(&self, f: &mut Formatter) -> std::result::Result<(), FormatError> {
-        unimplemented!()
-    }
-}
-
-impl<'a> From<&'a ArgMatches<'a>> for ForgetableDateTimeInput<'a> {
-    fn from(matches: &'a ArgMatches<'a>) -> ForgetableDateTimeInput<'a> {
-        ForgetableDateTimeInput {
-            datetime: matches.value_of("datetime"),
-            forgotten: matches.is_present("forgot"),
+        match self {
+            GoalActionParseError::UnexpectedArg => write!(f, "time/erase argument is not expected"),
+            GoalActionParseError::MissingArg => write!(f, "time/erase argument is missing"),
+            GoalActionParseError::InvalidGoalPeriod(error) => write!(f, "{}", error),
+            GoalActionParseError::DurationParseError(error) => write!(f, "{}", error),
         }
     }
 }
 
-impl<'a> From<&'a ArgMatches<'a>> for GoalArgInput<'a> {
-    fn from(matches: &'a ArgMatches<'a>) -> GoalArgInput<'a> {
-        if matches.is_present("erase") {
-            GoalArgInput::Erase
-        } else {
-            GoalArgInput::Set(
-                matches
-                    .value_of("time")
-                    .expect("Required field not found!")
-            )
+impl Display for CommandParseError {
+    fn fmt(&self, f: &mut Formatter) -> std::result::Result<(), FormatError> {
+        write!(f, "{}: ", Color::Red.paint("error").to_string())?;
+
+        match self {
+            CommandParseError::DateTimeParseError(error) => {
+                writeln!(f, "could not parse the date/time argument.")?;
+                write!(f, "cause: {}", error)
+            }
+            CommandParseError::DurationParseError(error) => {
+                writeln!(f, "could not parse the duration argument.")?;
+                write!(f, "cause: {}", error)
+            }
+            CommandParseError::InvalidGoalPeriod(error) => {
+                writeln!(f, "could not parse the period argument.")?;
+                write!(f, "cause: {}", error)
+            }
+            CommandParseError::GoalActionParseError(error) => {
+                writeln!(f, "could not parse the goal action.")?;
+                write!(f, "cause: {}", error)
+            }
         }
     }
 }
+
+//==============================================================================
+//
+//                               Parsing Functions
+//
+//==============================================================================
 
 fn parse_datetime_or_now(input: Option<&str>) -> Result<DateTime, chrono::format::ParseError> {
     input
@@ -316,4 +337,31 @@ fn parse_duration(input: &str) -> Result<Duration, DurationParseError> {
                 ),
             }
         })
+}
+
+fn parse_goal_action<'a>(
+    action: GoalActionInput<'a>,
+    arg: Option<GoalArgInput<'a>>
+) -> Result<GoalAction, GoalActionParseError>
+{
+    match (action, arg) {
+        (GoalActionInput::EraseAll, None) => {
+            Ok(GoalAction::EraseAll)
+        }
+        (GoalActionInput::EraseAll, Some(_)) => {
+            Err(GoalActionParseError::UnexpectedArg)
+        }
+        (GoalActionInput::Set(_), None) => {
+            Err(GoalActionParseError::MissingArg)
+        }
+        (GoalActionInput::Set(period), Some(GoalArgInput::Erase)) => {
+            Ok(GoalAction::Erase(GoalPeriod::from_str(period)?))
+        }
+        (GoalActionInput::Set(period), Some(GoalArgInput::Time(time))) => {
+            Ok(GoalAction::Set(
+                GoalPeriod::from_str(period)?,
+                parse_duration(time)?,
+            ))
+        }
+    }
 }

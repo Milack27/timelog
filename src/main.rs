@@ -1,7 +1,9 @@
 #![feature(try_from)]
 
+#[cfg(windows)]
 use ansi_term::enable_ansi_support;
 
+use clap::ArgMatches;
 use clap::clap_app;
 use clap::crate_authors;
 use clap::crate_description;
@@ -12,6 +14,7 @@ use std::convert::TryFrom;
 use timelog::Command;
 use timelog::CommandInput;
 use timelog::ForgetableDateTimeInput;
+use timelog::GoalActionInput;
 use timelog::GoalArgInput;
 
 fn main() {
@@ -67,18 +70,17 @@ fn main() {
             (@arg mnemonic: +required MNEMONIC_DESCRIPTION)
             (@arg datetime: "Date/time until which all time has been logged")
         )
-        (@subcommand open =>
-            (about: "Opens the log file of a task")
-            (@arg mnemonic: MNEMONIC_DESCRIPTION)
-        )
         (@subcommand resolve =>
             (about: "Allows the user to provide a better estimate of date/time of the entries marked as forgot")
             (@arg mnemonic: MNEMONIC_DESCRIPTION)
         )
         (@subcommand goal =>
             (about: "Sets a time goal for a provided task or for the work in general")
-            (@arg period: +required +takes_value --period -p "Period of the goal (month, week, day, or a day of the week)")
-            (@group goal +required =>
+            (@group action +required =>
+                (@arg period: +takes_value --period -p "Period of the goal (month, week, day, or a day of the week)")
+                (@arg erase_all: --erase_all "Erase the goals for all periods of the given task or work in general")
+            )
+            (@group goal =>
                 (@arg time: +takes_value --time -t "Expected worked time (e.g. 8h 48m)")
                 (@arg erase: --erase -e "Erase the time goal for the given period")
             )
@@ -98,10 +100,10 @@ fn main() {
 
     let command_input = match matches.subcommand() {
         ("enter", Some(submatches)) => CommandInput::Enter {
-            datetime: ForgetableDateTimeInput::from(submatches),
+            datetime: parse_forgettable_datetime(submatches),
         },
         ("exit", Some(submatches)) => CommandInput::Exit {
-            datetime: ForgetableDateTimeInput::from(submatches),
+            datetime: parse_forgettable_datetime(submatches),
         },
         ("create", Some(submatches)) => CommandInput::Create {
             mnemonic: submatches.value_of("mnemonic").expect(REQUIRED_FIELD_EXPECTED),
@@ -116,26 +118,23 @@ fn main() {
         },
         ("start", Some(submatches)) => CommandInput::Start {
             mnemonic: submatches.value_of("mnemonic").expect(REQUIRED_FIELD_EXPECTED),
-            datetime: ForgetableDateTimeInput::from(submatches),
+            datetime: parse_forgettable_datetime(submatches),
         },
         ("stop", Some(submatches)) => CommandInput::Stop {
             mnemonic: submatches.value_of("mnemonic"),
-            datetime: ForgetableDateTimeInput::from(submatches),
+            datetime: parse_forgettable_datetime(submatches),
             commit: submatches.is_present("commit"),
         },
         ("commit", Some(submatches)) => CommandInput::Commit {
             mnemonic: submatches.value_of("mnemonic").expect(REQUIRED_FIELD_EXPECTED),
             datetime: submatches.value_of("datetime"),
         },
-        ("open", Some(submatches)) => CommandInput::Open {
-            mnemonic: submatches.value_of("mnemonic"),
-        },
         ("resolve", Some(submatches)) => CommandInput::Resolve {
             mnemonic: submatches.value_of("mnemonic"),
         },
         ("goal", Some(submatches)) => CommandInput::Goal {
-            period: submatches.value_of("period").expect(REQUIRED_FIELD_EXPECTED),
-            goal_arg: GoalArgInput::from(submatches),
+            action: parse_goal_action(submatches).expect(REQUIRED_FIELD_EXPECTED),
+            arg: parse_goal_arg(submatches),
             mnemonic: submatches.value_of("mnemonic"),
         },
         ("goals", Some(submatches)) => CommandInput::Goals {
@@ -158,7 +157,32 @@ fn main() {
         }
     };
 
-    if let Err(error) = command.execute() {
-        println!("{}", error);
+    // TODO: Execute command
+}
+
+fn parse_forgettable_datetime<'a>(matches: &'a ArgMatches<'a>) -> ForgetableDateTimeInput<'a> {
+    ForgetableDateTimeInput {
+        datetime: matches.value_of("datetime"),
+        forgotten: matches.is_present("forgot"),
+    }
+}
+
+fn parse_goal_action<'a>(matches: &'a ArgMatches<'a>) -> Option<GoalActionInput<'a>> {
+    if matches.is_present("erase_all") {
+        Some(GoalActionInput::EraseAll)
+    } else if let Some(period) = matches.value_of("period") {
+        Some(GoalActionInput::Set(period))
+    } else {
+        None
+    }
+}
+
+fn parse_goal_arg<'a>(matches: &'a ArgMatches<'a>) -> Option<GoalArgInput<'a>> {
+    if matches.is_present("erase") {
+        Some(GoalArgInput::Erase)
+    } else if let Some(time) = matches.value_of("time") {
+        Some(GoalArgInput::Time(time))
+    } else {
+        None
     }
 }
