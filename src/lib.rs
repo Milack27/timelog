@@ -29,7 +29,7 @@ pub enum Command<'a> {
     Edit { mnemonic: &'a str, code: Option<&'a str> },
     Delete { mnemonic: &'a str },
     Start { mnemonic: &'a str, datetime: ForgetableDateTime },
-    Stop { mnemonic: Option<&'a str>, datetime: ForgetableDateTime },
+    Stop { mnemonic: Option<&'a str>, datetime: ForgetableDateTime, commit: bool },
     Commit { mnemonic: &'a str, datetime: DateTime },
     Open { mnemonic: Option<&'a str> },
     Resolve { mnemonic: Option<&'a str> },
@@ -48,7 +48,7 @@ pub enum CommandInput<'a> {
     Edit { mnemonic: &'a str, code: Option<&'a str> },
     Delete { mnemonic: &'a str },
     Start { mnemonic: &'a str, datetime: ForgetableDateTimeInput<'a> },
-    Stop { mnemonic: Option<&'a str>, datetime: ForgetableDateTimeInput<'a> },
+    Stop { mnemonic: Option<&'a str>, datetime: ForgetableDateTimeInput<'a>, commit: bool },
     Commit { mnemonic: &'a str, datetime: Option<&'a str> },
     Open { mnemonic: Option<&'a str> },
     Resolve { mnemonic: Option<&'a str> },
@@ -127,9 +127,10 @@ impl<'a> TryFrom<CommandInput<'a>> for Command<'a> {
                 mnemonic,
                 datetime: ForgetableDateTime::try_from(datetime)?,
             },
-            CommandInput::Stop { mnemonic, datetime } => Command::Stop {
+            CommandInput::Stop { mnemonic, datetime, commit } => Command::Stop {
                 mnemonic,
                 datetime: ForgetableDateTime::try_from(datetime)?,
+                commit,
             },
             CommandInput::Commit { mnemonic, datetime } => Command::Commit {
                 mnemonic,

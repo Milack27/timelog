@@ -60,6 +60,7 @@ fn main() {
             (@arg mnemonic: MNEMONIC_DESCRIPTION)
             (@arg datetime: "Date/time the user stopped working")
             (@arg forgot: --forgot -f FORGOT_DESCRIPTION)
+            (@arg commit: --commit -c "Execute the commit subcommand after stop")
         )
         (@subcommand commit =>
             (about: "Marks a time period worked on a task as logged in an external tool")
@@ -120,6 +121,7 @@ fn main() {
         ("stop", Some(submatches)) => CommandInput::Stop {
             mnemonic: submatches.value_of("mnemonic"),
             datetime: ForgetableDateTimeInput::from(submatches),
+            commit: submatches.is_present("commit"),
         },
         ("commit", Some(submatches)) => CommandInput::Commit {
             mnemonic: submatches.value_of("mnemonic").expect(REQUIRED_FIELD_EXPECTED),
