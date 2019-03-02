@@ -59,12 +59,12 @@ pub enum CommandInput<'a> {
 
 pub struct ForgetableDateTime {
     datetime: DateTime,
-    forgot: bool,
+    forgotten: bool,
 }
 
 pub struct ForgetableDateTimeInput<'a> {
     datetime: Option<&'a str>,
-    forgot: bool,
+    forgotten: bool,
 }
 
 pub enum GoalPeriod {
@@ -154,7 +154,7 @@ impl<'a> TryFrom<ForgetableDateTimeInput<'a>> for ForgetableDateTime {
     fn try_from(input: ForgetableDateTimeInput<'a>) -> Result<ForgetableDateTime, Self::Error> {
         Ok(ForgetableDateTime {
             datetime: parse_datetime_or_now(input.datetime)?,
-            forgot: input.forgot,
+            forgotten: input.forgotten,
         })
     }
 }
@@ -257,7 +257,7 @@ impl<'a> From<&'a ArgMatches<'a>> for ForgetableDateTimeInput<'a> {
     fn from(matches: &'a ArgMatches<'a>) -> ForgetableDateTimeInput<'a> {
         ForgetableDateTimeInput {
             datetime: matches.value_of("datetime"),
-            forgot: matches.is_present("forgot"),
+            forgotten: matches.is_present("forgot"),
         }
     }
 }
