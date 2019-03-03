@@ -25,18 +25,49 @@ pub type DateTime = chrono::DateTime<Local>;
 
 /// Represents a command containing all the needed parameters to be executed.
 pub enum Command<'a> {
-    Enter { datetime: ForgetableDateTime },
-    Exit { datetime: ForgetableDateTime },
-    Create { mnemonic: &'a str, code: Option<&'a str> },
-    Edit { mnemonic: &'a str, code: Option<&'a str> },
-    Delete { mnemonic: &'a str },
-    Start { mnemonic: &'a str, datetime: ForgetableDateTime },
-    Stop { mnemonic: Option<&'a str>, datetime: ForgetableDateTime, commit: bool },
-    Commit { mnemonic: &'a str, datetime: DateTime },
-    Resolve { mnemonic: Option<&'a str> },
-    Goal { action: GoalAction, mnemonic: Option<&'a str> },
-    Goals { mnemonic: Option<&'a str> },
-    Status { mnemonic: Option<&'a str> },
+    Enter {
+        datetime: ForgetableDateTime,
+    },
+    Exit {
+        datetime: ForgetableDateTime,
+    },
+    Create {
+        mnemonic: &'a str,
+        code: Option<&'a str>,
+    },
+    Edit {
+        mnemonic: &'a str,
+        code: Option<&'a str>,
+    },
+    Delete {
+        mnemonic: &'a str,
+    },
+    Start {
+        mnemonic: &'a str,
+        datetime: ForgetableDateTime,
+    },
+    Stop {
+        mnemonic: Option<&'a str>,
+        datetime: ForgetableDateTime,
+        commit: bool,
+    },
+    Commit {
+        mnemonic: &'a str,
+        datetime: DateTime,
+    },
+    Resolve {
+        mnemonic: Option<&'a str>,
+    },
+    Goal {
+        action: GoalAction,
+        mnemonic: Option<&'a str>,
+    },
+    Goals {
+        mnemonic: Option<&'a str>,
+    },
+    Status {
+        mnemonic: Option<&'a str>,
+    },
 }
 
 pub struct ForgetableDateTime {
@@ -108,28 +139,32 @@ pub fn parse_duration(input: &str) -> Result<Duration, DurationParseError> {
         .captures(input)
         .ok_or(DurationParseError::InvalidFormat)
         .and_then(|cap| {
-            let hours = cap.get(1)
-                .map(|h| h.as_str()
-                    .parse::<i64>()
-                    .map(Duration::hours)
-                    .map_err(|_| DurationParseError::InvalidHourNumber)
-                )
+            let hours = cap
+                .get(1)
+                .map(|h| {
+                    h.as_str()
+                        .parse::<i64>()
+                        .map(Duration::hours)
+                        .map_err(|_| DurationParseError::InvalidHourNumber)
+                })
                 .transpose()?;
-            
-            let minutes = cap.get(2)
-                .map(|m| m.as_str()
-                    .parse::<i64>()
-                    .map(Duration::minutes)
-                    .map_err(|_| DurationParseError::InvalidMinuteNumber)
-                )
+
+            let minutes = cap
+                .get(2)
+                .map(|m| {
+                    m.as_str()
+                        .parse::<i64>()
+                        .map(Duration::minutes)
+                        .map_err(|_| DurationParseError::InvalidMinuteNumber)
+                })
                 .transpose()?;
 
             match (hours, minutes) {
                 (None, None) => Err(DurationParseError::EmptyDuration),
-                _ => Ok(
-                    hours.unwrap_or_else(Duration::zero) +
-                    minutes.unwrap_or_else(Duration::zero)
-                ),
+                _ => {
+                    Ok(hours.unwrap_or_else(Duration::zero)
+                        + minutes.unwrap_or_else(Duration::zero))
+                }
             }
         })
 }

@@ -3,19 +3,19 @@
 #[cfg(windows)]
 use ansi_term::enable_ansi_support;
 
-use clap::ArgMatches;
 use clap::clap_app;
 use clap::crate_authors;
 use clap::crate_description;
 use clap::crate_version;
+use clap::ArgMatches;
 
 use std::convert::TryFrom;
 
-use timelog::Command;
 use timelog::input::CommandInput;
 use timelog::input::ForgetableDateTimeInput;
 use timelog::input::GoalActionInput;
 use timelog::input::GoalArgInput;
+use timelog::Command;
 
 fn main() {
     const MNEMONIC_DESCRIPTION: &str = "Primary reference to the task";
@@ -106,18 +106,26 @@ fn main() {
             datetime: parse_forgettable_datetime(submatches),
         },
         ("create", Some(submatches)) => CommandInput::Create {
-            mnemonic: submatches.value_of("mnemonic").expect(REQUIRED_FIELD_EXPECTED),
+            mnemonic: submatches
+                .value_of("mnemonic")
+                .expect(REQUIRED_FIELD_EXPECTED),
             code: submatches.value_of("code"),
         },
         ("edit", Some(submatches)) => CommandInput::Edit {
-            mnemonic: submatches.value_of("mnemonic").expect(REQUIRED_FIELD_EXPECTED),
+            mnemonic: submatches
+                .value_of("mnemonic")
+                .expect(REQUIRED_FIELD_EXPECTED),
             code: submatches.value_of("code"),
         },
         ("delete", Some(submatches)) => CommandInput::Delete {
-            mnemonic: submatches.value_of("mnemonic").expect(REQUIRED_FIELD_EXPECTED),
+            mnemonic: submatches
+                .value_of("mnemonic")
+                .expect(REQUIRED_FIELD_EXPECTED),
         },
         ("start", Some(submatches)) => CommandInput::Start {
-            mnemonic: submatches.value_of("mnemonic").expect(REQUIRED_FIELD_EXPECTED),
+            mnemonic: submatches
+                .value_of("mnemonic")
+                .expect(REQUIRED_FIELD_EXPECTED),
             datetime: parse_forgettable_datetime(submatches),
         },
         ("stop", Some(submatches)) => CommandInput::Stop {
@@ -126,7 +134,9 @@ fn main() {
             commit: submatches.is_present("commit"),
         },
         ("commit", Some(submatches)) => CommandInput::Commit {
-            mnemonic: submatches.value_of("mnemonic").expect(REQUIRED_FIELD_EXPECTED),
+            mnemonic: submatches
+                .value_of("mnemonic")
+                .expect(REQUIRED_FIELD_EXPECTED),
             datetime: submatches.value_of("datetime"),
         },
         ("resolve", Some(submatches)) => CommandInput::Resolve {
